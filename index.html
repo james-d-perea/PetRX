@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Household Rx Chart</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #F7F5F0;
+    color: #2B2B26;
+    font-family: Georgia, 'Times New Roman', serif;
+    padding: 32px 20px 64px;
+  }
+  .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .subtitle { margin: 4px 0 24px; color: #6b6b63; font-size: 14px; }
+  .card {
+    background: #fff;
+    border: 1px solid #E7E3D8;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid #EEEAE0;
+    background: #FBFAF6;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .card-header h2 { font-size: 19px; margin: 0; }
+  .refill-link {
+    font-size: 12.5px;
+    color: #5C6B52;
+    text-decoration: none;
+    border: 1px solid #CFD8C5;
+    padding: 5px 10px;
+    border-radius: 20px;
+  }
+  .med-row { padding: 12px 20px; border-bottom: 1px solid #F1EEE5; }
+  .med-row:last-child { border-bottom: none; }
+  .med-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .med-name { font-size: 15.5px; font-weight: bold; }
+  .med-meta { font-size: 12.5px; color: #8a8a80; margin-top: 2px; }
+  .chip {
+    font-size: 11.5px;
+    font-weight: bold;
+    padding: 4px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .bar-track { flex: 1; height: 6px; background: #F1EEE5; border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .days-label { font-size: 12.5px; color: #6b6b63; min-width: 62px; text-align: right; }
+  .refill-btn {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: #7A8B6F;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+  .refill-form { display: none; align-items: center; gap: 8px; margin-top: 8px; }
+  .refill-form.active { display: flex; }
+  .refill-form input {
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid #CFD8C5;
+    border-radius: 8px;
+    width: 120px;
+  }
+  .refill-form button {
+    font-size: 12.5px;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .save-btn { color: #fff; background: #7A8B6F; }
+  .cancel-btn { color: #8a8a80; background: none; }
+  .note {
+    background: #FBF2E1;
+    color: #8a6a1a;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  .err {
+    background: #FBEAE8;
+    color: #C1443C;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🐾 Household Rx Chart</h1>
+    <p class="subtitle sans">Tap "Mark refilled" once you've restocked.</p>
+    <div id="app"></div>
+  </div>
+
+<script>
+(function () {
+  var STORAGE_KEY = "pet-rx-tracker-data";
+
+  var seedData = [
+    {
+      id: "fifi",
+      pet: "Fifi",
+      refillSource: "Vet — Caring Hands",
+      refillLink: "https://caringhandsvet.com/alexandria-va/online-pharmacy/",
+      meds: [
+        { id: "fifi-flu10", name: "Fluoxetine 10mg", perDay: 1, count: 20, lastUpdated: "2026-07-21" },
+        { id: "fifi-flu20", name: "Fluoxetine 20mg", perDay: 1, count: 20, lastUpdated: "2026-07-21" },
+        { id: "fifi-clon", name: "Clonidine 10mg", perDay: 4, count: 40, lastUpdated: "2026-07-21" }
+      ]
+    },
+    {
+      id: "noodle",
+      pet: "Noodle",
+      refillSource: "Chewy",
+      refillLink: "https://www.chewy.com/app/pharmacy",
+      meds: [
+        { id: "noodle-flu10", name: "Fluoxetine 10mg", perDay: 1, count: 45, lastUpdated: "2026-07-21" }
+      ]
+    },
+    {
+      id: "dottie",
+      pet: "Dottie",
+      refillSource: "Chewy",
+      refillLink: "https://www.chewy.com/app/pharmacy",
+      meds: [
+        { id: "dottie-bex", name: "Bexacat", perDay: 1, count: 30, lastUpdated: "2026-07-21" }
+      ]
+    },
+    {
+      id: "iggy",
+      pet: "Iggy",
+      refillSource: "Vet — Caring Hands",
+      refillLink: "https://caringhandsvet.com/alexandria-va/online-pharmacy/",
+      meds: [
+        { id: "iggy-heart", name: "Heart medication (confirm name w/ vet)", perDay: 2, count: 6, lastUpdated: "2026-07-21" }
+      ]
+    }
+  ];
+
+  // In-memory copy always exists, regardless of whether storage works.
+  var pets = JSON.parse(JSON.stringify(seedData));
+  var storageAvailable = false;
+
+  // Feature-detect storage safely. Never let this block rendering.
+  try {
+    var testKey = "__rx_test__";
+    window.localStorage.setItem(testKey, "1");
+    window.localStorage.removeItem(testKey);
+    storageAvailable = true;
+  } catch (e) {
+    storageAvailable = false;
+  }
+
+  if (storageAvailable) {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) pets = parsed;
+      }
+    } catch (e) {
+      // ignore, keep seed data
+    }
+  }
+
+  function saveData() {
+    if (!storageAvailable) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(pets));
+    } catch (e) {
+      // silently ignore; in-memory state still works for this session
+    }
+  }
+
+  function daysLeft(med, today) {
+    try {
+      var last = new Date(med.lastUpdated + "T00:00:00");
+      var elapsed = Math.floor((today.getTime() - last.getTime()) / 86400000);
+      var remaining = med.count - elapsed * med.perDay;
+      return Math.max(0, Math.ceil(remaining / med.perDay));
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function statusFor(days) {
+    if (days <= 5) return { label: "Refill now", tone: "urgent" };
+    if (days <= 10) return { label: "Refill soon", tone: "warn" };
+    return { label: "On track", tone: "ok" };
+  }
+
+  var toneStyles = {
+    urgent: { bar: "#C1443C", chip: "#C1443C", chipBg: "#FBEAE8" },
+    warn:   { bar: "#B9862F", chip: "#B9862F", chipBg: "#FBF2E1" },
+    ok:     { bar: "#7A8B6F", chip: "#5C6B52", chipBg: "#EEF1E9" }
+  };
+
+  function render() {
+    var app = document.getElementById("app");
+    app.innerHTML = "";
+
+    if (!storageAvailable) {
+      var note = document.createElement("div");
+      note.className = "note sans";
+      note.textContent = "Note: this browser is blocking local storage, so changes won't be saved after you close the tab.";
+      app.appendChild(note);
+    }
+
+    var today = new Date();
+
+    pets.forEach(function (p) {
+      var card = document.createElement("div");
+      card.className = "card";
+
+      var header = document.createElement("div");
+      header.className = "card-header";
+      header.innerHTML =
+        "<h2>" + p.pet + "</h2>" +
+        '<a class="refill-link sans" href="' + p.refillLink + '" target="_blank" rel="noopener noreferrer">Refill via ' + p.refillSource + " \u2197</a>";
+      card.appendChild(header);
+
+      p.meds.forEach(function (m) {
+        var days = daysLeft(m, today);
+        var status = statusFor(days);
+        var sty = toneStyles[status.tone];
+        var pct = Math.max(4, Math.min(100, (days / 30) * 100));
+
+        var row = document.createElement("div");
+        row.className = "med-row";
+        row.innerHTML =
+          '<div class="med-top">' +
+            "<div>" +
+              '<div class="med-name">' + m.name + "</div>" +
+              '<div class="med-meta sans">' + m.perDay + "/day \u00b7 " + m.count + " pills as of " + m.lastUpdated + "</div>" +
+            "</div>" +
+            '<span class="chip sans" style="color:' + sty.chip + ";background:" + sty.chipBg + '">' +
+              (status.tone === "urgent" ? "\u26a0 " : "") + status.label +
+            "</span>" +
+          "</div>" +
+          '<div class="bar-row">' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pct + "%;background:" + sty.bar + '"></div></div>' +
+            '<span class="days-label sans">' + days + " day" + (days === 1 ? "" : "s") + " left</span>" +
+          "</div>" +
+          '<button class="refill-btn sans" data-pet="' + p.id + '" data-med="' + m.id + '">\u21bb Mark refilled</button>' +
+          '<div class="refill-form sans" data-pet="' + p.id + '" data-med="' + m.id + '">' +
+            '<input type="number" min="0" placeholder="New pill count" />' +
+            '<button class="save-btn">Save</button>' +
+            '<button class="cancel-btn">Cancel</button>' +
+          "</div>";
+        card.appendChild(row);
+      });
+
+      app.appendChild(card);
+    });
+
+    app.querySelectorAll(".refill-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var form = app.querySelector('.refill-form[data-pet="' + btn.dataset.pet + '"][data-med="' + btn.dataset.med + '"]');
+        btn.style.display = "none";
+        form.classList.add("active");
+        form.querySelector("input").focus();
+      });
+    });
+
+    app.querySelectorAll(".refill-form").forEach(function (form) {
+      var saveBtn = form.querySelector(".save-btn");
+      var cancelBtn = form.querySelector(".cancel-btn");
+      var input = form.querySelector("input");
+
+      saveBtn.addEventListener("click", function () {
+        var val = Number(input.value);
+        if (input.value !== "" && !isNaN(val)) {
+          var pet = pets.filter(function (p) { return p.id === form.dataset.pet; })[0];
+          var med = pet.meds.filter(function (m) { return m.id === form.dataset.med; })[0];
+          med.count = val;
+          med.lastUpdated = new Date().toISOString().slice(0, 10);
+          saveData();
+          render();
+        }
+      });
+
+      cancelBtn.addEventListener("click", function () {
+        var btn = app.querySelector('.refill-btn[data-pet="' + form.dataset.pet + '"][data-med="' + form.dataset.med + '"]');
+        form.classList.remove("active");
+        btn.style.display = "inline-block";
+      });
+    });
+  }
+
+  try {
+    render();
+  } catch (e) {
+    var app = document.getElementById("app");
+    var err = document.createElement("div");
+    err.className = "err sans";
+    err.textContent = "Something went wrong rendering the tracker: " + e.message;
+    app.appendChild(err);
+  }
+})();
+</script>
+</body>
+</html>
